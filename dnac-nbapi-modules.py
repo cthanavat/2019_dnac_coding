@@ -146,6 +146,11 @@ def csvFile_write(data, path):
         ins.close
 ##
 
+def convert_path(path):
+    return os.path.abspath(os.path.expanduser(path))
+##
+
+
 def device_grouping(device_json):
     # input : device list (json)
     # grouping device
@@ -210,10 +215,12 @@ def initial_function ():
     return token
     """
     # check/create dir
-    if not os.path.exists(here + "\_codeData"):
-        os.makedirs(here + "\_codeData")
-    if not os.path.exists(here + "\_codeData\deviceList"):
-        os.makedirs(here + "\_codeData\deviceList")
+
+    if not os.path.exists(os.path.abspath("_codeData")):
+        os.makedirs(os.path.abspath("_codeData"))
+
+    if not os.path.exists(os.path.abspath(os.path.join('_codeData','deviceList'))):
+        os.makedirs(os.path.abspath(os.path.join("_codeData","deviceList")))
     
     # Check cache file
     # - get Credencial of DNAC
@@ -221,7 +228,7 @@ def initial_function ():
     # -
 
     # read credencial
-    cred_list = csvFile_read(here + "\cred_list.csv")
+    cred_list = csvFile_read(os.path.abspath("cred_list.csv"))
     # turn hostname as key of each credencial
     temp_cred = {}
     for idx_1, item_1 in enumerate (cred_list):
@@ -234,7 +241,7 @@ def initial_function ():
     token_cache_list = []
     temp_list = []
 
-    if not os.path.exists(here + "\_codeDat\_init_cache.csv"):
+    if not os.path.exists(os.path.abspath(os.path.join("_codeData","_init_cache.csv"))):
         ## Token file Format list of [token,(token_value),(date-time)]
         temp_list.append('token')
         
@@ -244,9 +251,9 @@ def initial_function ():
         temp_list.append(str((datetime.datetime.now()).strftime("%Y%m%d%H%M")))
 
         token_cache_list.append(temp_list)
-        csvFile_write(token_cache_list, here + "\_codeData\_init_cache.txt")
+        csvFile_write(token_cache_list, os.path.abspath(os.path.join("_codeData","_init_cache.txt")))
     else:
-
+        print ("nothing")
     # authen dnac to get token 
     #token = get_auth_token (cred_list['DNAC']['host'],cred_list['DNAC']['username'],cred_list['DNAC']['password'])
     return (token)
@@ -262,10 +269,9 @@ if __name__ == "__main__":
     switch_device_list, wireless_device_list = device_grouping(device_list)
 
 
-
     ##
-    csvFile_write(switch_device_list, here + "\_codeData\deviceList\switch_device_list.csv")
-    csvFile_write(wireless_device_list, here + "\_codeData\deviceList\wireless_device_list.csv")
+    csvFile_write(switch_device_list, os.path.abspath(os.path.join("_codeData","deviceList","switch_device_list.csv")))
+    csvFile_write(wireless_device_list, os.path.abspath(os.path.join("_codeData","deviceList","switch_device_list.csv")))
 
 
 
