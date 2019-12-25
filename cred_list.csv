@@ -1,0 +1,5 @@
+hostname,host,username,password,https_port,netconf_port,restconf_port,ssh_port,nxapi_por
+ios_xe,ios-xe-mgmt.cisco.com,developer,C1sco12345,,10000,9443,,
+DNAC,10.145.128.22,thanacho,Netw0rk*,443,,,,
+switch-1,10.10.20.48,developer,C1sco12345,,830,443,22,
+switch-2,sbx-nxos-mgmt.cisco.com,admin,Admin_1234!,,10000,443,8181,80
