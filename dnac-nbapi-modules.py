@@ -241,7 +241,7 @@ def initial_function ():
     token_cache_list = []
     temp_list = []
 
-    if not os.path.exists(os.path.abspath(os.path.join("_codeData","_init_cache.csv"))):
+    if not os.path.exists(os.path.abspath(os.path.join("_codeData","_init_cache.txt"))):
         ## Token file Format list of [token,(token_value),(date-time)]
         temp_list.append('token')
         
