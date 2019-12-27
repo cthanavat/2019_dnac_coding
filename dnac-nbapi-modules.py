@@ -253,6 +253,9 @@ def initial_function ():
         token_cache_list.append(temp_list)
         csvFile_write(token_cache_list, os.path.abspath(os.path.join("_codeData","_init_cache.txt")))
     else:
+        init_cache = csvFile_read(os.path.abspath(os.path.join("_codeData","_init_cache.txt")))
+        pprint.pprint(init_cache)
+        
         print ("nothing")
     # authen dnac to get token 
     #token = get_auth_token (cred_list['DNAC']['host'],cred_list['DNAC']['username'],cred_list['DNAC']['password'])
@@ -261,17 +264,17 @@ def initial_function ():
 
 if __name__ == "__main__":
     ## initial
-    token = initial_function()['token']
+    initial_function()
     print ("Main")
 
 
-    device_list =  dna_get_device_list(token)
-    switch_device_list, wireless_device_list = device_grouping(device_list)
+    #device_list =  dna_get_device_list(token)
+    #switch_device_list, wireless_device_list = device_grouping(device_list)
 
 
     ##
-    csvFile_write(switch_device_list, os.path.abspath(os.path.join("_codeData","deviceList","switch_device_list.csv")))
-    csvFile_write(wireless_device_list, os.path.abspath(os.path.join("_codeData","deviceList","switch_device_list.csv")))
+    #csvFile_write(switch_device_list, os.path.abspath(os.path.join("_codeData","deviceList","switch_device_list.csv")))
+    #csvFile_write(wireless_device_list, os.path.abspath(os.path.join("_codeData","deviceList","switch_device_list.csv")))
 
 
 
@@ -281,4 +284,4 @@ if __name__ == "__main__":
     #pprint.pprint  (device_detail)
     #modules = dna_get_modules(device_detail['response']['id'], token)
     #print_info(modules)
-##
+    #
