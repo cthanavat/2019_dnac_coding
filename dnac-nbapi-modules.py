@@ -65,10 +65,7 @@ def get_auth_token(controller_ip, username, password):
     result.raise_for_status()
 
     token = result.json()["Token"]
-    return {
-        "controller_ip": controller_ip,
-        "token": token
-    }
+    return (token)
 ##
 
 def create_url(path, controller_ip=DNAC):
@@ -154,6 +151,14 @@ def convert_path(path):
 def device_grouping(device_json):
     # input : device list (json)
     # grouping device
+            temp_01.append(item_1['id'])
+            temp_01.append(item_1['location'])
+            temp_01.append(item_1['family'])
+            temp_01.append(item_1['platformId'])
+            temp_01.append(item_1['role'])
+            temp_01.append(item_1['serialNumber'])
+            if (item_1['upTime']).find('day') < 0:
+                item_1['upTime'] = '0day,' + item_
     # output : 
     #   switch device (list)
     #   wireless device (list)
@@ -185,6 +190,8 @@ def device_grouping(device_json):
             temp_01.append(item_1['platformId'])
             temp_01.append(item_1['role'])
             temp_01.append(item_1['serialNumber'])
+            if (item_1['upTime']).find('day') < 0:
+                item_1['upTime'] = '0day,' + item_1['upTime']
             temp_01.append(item_1['upTime'])
             temp_01.append(item_1['errorCode'])
             switch_list.append(temp_01)
@@ -198,6 +205,12 @@ def device_grouping(device_json):
             temp_01.append(item_1['platformId'])
             temp_01.append(item_1['role'])
             temp_01.append(item_1['serialNumber'])
+            if (item_1['upTime']).find('day') < 0:
+                item_1['upTime'] = '0day,' + item_1['upTime']
+            elif (item_1['upTime']).find('day ') > 0:
+                item_1['upTime'] = (item_1['upTime']).replace('day'," day,")
+            elif (item_1['upTime']).find('days ') > 0:
+                item_1['upTime'] = (item_1['upTime']).replace('days'," days,")
             temp_01.append(item_1['upTime'])
             temp_01.append(item_1['errorCode'])
             wireless_list.append(temp_01)
@@ -206,9 +219,9 @@ def device_grouping(device_json):
     return (switch_list, wireless_list)
 ##
 
-def initial_function ():
+def getToken_control ():
     """  
-    1. Director check
+    1. Directory check
     2. read credencial file
     3. DNAC authen,
 
@@ -229,7 +242,7 @@ def initial_function ():
 
     # read credencial
     cred_list = csvFile_read(os.path.abspath("cred_list.csv"))
-    # turn hostname as key of each credencial
+    # turn hostname as getToken_control key of each credencial
     temp_cred = {}
     for idx_1, item_1 in enumerate (cred_list):
         temp_key = item_1['hostname']
@@ -237,46 +250,75 @@ def initial_function ():
         temp_cred[temp_key] = item_1
     cred_list = temp_cred
 
+    token_check = 0
     token = ""
     token_cache_list = []
     temp_list = []
 
     if not os.path.exists(os.path.abspath(os.path.join("_codeData","_init_cache.txt"))):
-        ## Token file Format list of [token,(token_value),(date-time)]
+        token_check = 1
+    else:
+        # Read file
+        init_cache = csvFile_read(os.path.abspath(os.path.join("_codeData","_init_cache.txt")))
+
+        # 
+        temp_init_cache = {}
+        for idx_1, item_1 in enumerate (init_cache):
+            temp_key = item_1['name']
+            del item_1['name']
+            temp_init_cache[temp_key] = item_1
+        init_cache = temp_init_cache
+        
+        # Check Token timeout,
+        time_now = (datetime.datetime.now()).strftime("%Y%m%d%H%M")
+        time_token =  init_cache['token']['date']
+        #pprint.pprint(time_token)
+        if int(time_now) > (int(time_token)+30):
+            print ('Timeout auth')
+            token_check = 1
+        else:
+            print ('Old auth')
+            token = init_cache['token']['value']
+    
+    if token_check == 1:
+        print ("New auth")
+                ## Token file Format list of [token,(token_value),(date-time)]175.176.222.199175.176.222.199
         temp_list.append('token')
         
         token = (get_auth_token(cred_list['DNAC']['host'],cred_list['DNAC']['username'],cred_list['DNAC']['password']))
-        temp_list.append(token['token'])
+        temp_list.append(token)
 
-        temp_list.append(str((datetime.datetime.now()).strftime("%Y%m%d%H%M")))
+        temp_list.append((datetime.datetime.now()).strftime("%Y%m%d%H%M"))
 
+        token_cache_list.append(['name','value','date'])
         token_cache_list.append(temp_list)
         csvFile_write(token_cache_list, os.path.abspath(os.path.join("_codeData","_init_cache.txt")))
-    else:
-        init_cache = csvFile_read(os.path.abspath(os.path.join("_codeData","_init_cache.txt")))
-        pprint.pprint(init_cache)
-        
-        print ("nothing")
-    # authen dnac to get token 
-    #token = get_auth_token (cred_list['DNAC']['host'],cred_list['DNAC']['username'],cred_list['DNAC']['password'])
     return (token)
 ##
 
 if __name__ == "__main__":
     ## initial
-    initial_function()
+    ##  - get token
+    token = getToken_control()
     print ("Main")
 
 
-    #device_list =  dna_get_device_list(token)
-    #switch_device_list, wireless_device_list = device_grouping(device_list)
+    ## Get device list
+    device_list =  dna_get_device_list(token)
+    switch_device_list, wireless_device_list = device_grouping(device_list)
+
+    
+    ## compare Device
+    ##  - existing file?
+    ##      - yes > compare, write, noti ### new device, SN change (check model),
+    ##      - no > write
 
 
-    ##
-    #csvFile_write(switch_device_list, os.path.abspath(os.path.join("_codeData","deviceList","switch_device_list.csv")))
-    #csvFile_write(wireless_device_list, os.path.abspath(os.path.join("_codeData","deviceList","switch_device_list.csv")))
-
-
+    ## check uptime
+    ##  - uptime == 0day, down** > noti
+    
+    csvFile_write(switch_device_list, os.path.abspath(os.path.join("_codeData","deviceList","switch_device_list.csv")))
+    csvFile_write(wireless_device_list, os.path.abspath(os.path.join("_codeData","deviceList","wireless_device_list.csv")))
 
     #pprint.pprint (cred_list) 
 
