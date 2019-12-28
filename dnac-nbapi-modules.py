@@ -54,7 +54,7 @@ project_root = os.path.abspath(os.path.join(here, ""))
 #DNAC_PORT = env_lab.DNA_CENTER['port']
 
 # -------------------------------------------------------------------
-# Helper functions
+# DNAC functions
 # -------------------------------------------------------------------
 def get_auth_token(controller_ip, username, password,port):
     """ Authenticates with controller and returns a token to be used in subsequent API invocations
@@ -97,15 +97,9 @@ def dna_get_device_list(token, ip, port):
     return rest_get_url("network-device", token, ip , port)
 ##
 
-def print_info(modules):
-    #pprint.pprint (modules)
-    print("{0:30}{1:15}{2:25}{3:5}".format("Module Name","Serial Number","Part Number","Is Field Replaceable?"))
-    for module in modules['response']:
-        print("{moduleName:30}{serialNumber:15}{partNumber:25}{moduleType:5}".format(moduleName=module['name'],
-                                                           serialNumber=module['serialNumber'],
-                                                           partNumber=module['partNumber'],
-                                                           moduleType=module['isFieldReplaceable']))
-##
+# -------------------------------------------------------------------
+# General functions
+# -------------------------------------------------------------------
 
 def csvFile_read(path):
     """ Read csv file
@@ -146,6 +140,11 @@ def csvFile_write(data, path):
 def convert_path(path):
     return os.path.abspath(os.path.expanduser(path))
 ##
+
+
+# -------------------------------------------------------------------
+# Program functions
+# -------------------------------------------------------------------
 
 def device_grouping(device_json):
     # input : device list (json)
