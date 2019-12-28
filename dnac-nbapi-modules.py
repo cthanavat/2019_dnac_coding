@@ -45,37 +45,37 @@ project_root = os.path.abspath(os.path.join(here, ""))
 
 
 # Extend the system path to include the project root and import the env files
-sys.path.insert(0, project_root)
-import env_lab
-
-DNAC = env_lab.DNA_CENTER['host']
-DNAC_USER = env_lab.DNA_CENTER['username']
-DNAC_PASSWORD = env_lab.DNA_CENTER['password']
-DNAC_PORT = env_lab.DNA_CENTER['port']
+#sys.path.insert(0, project_root)
+#import env_lab
+#
+#DNAC = env_lab.DNA_CENTER['host']
+#DNAC_USER = env_lab.DNA_CENTER['username']
+#DNAC_PASSWORD = env_lab.DNA_CENTER['password']
+#DNAC_PORT = env_lab.DNA_CENTER['port']
 
 # -------------------------------------------------------------------
 # Helper functions
 # -------------------------------------------------------------------
-def get_auth_token(controller_ip, username, password):
+def get_auth_token(controller_ip, username, password,port):
     """ Authenticates with controller and returns a token to be used in subsequent API invocations
     """
 
-    login_url = "https://{0}:{1}/dna/system/api/v1/auth/token".format(controller_ip, DNAC_PORT)
-    result = requests.post(url=login_url, auth=HTTPBasicAuth(DNAC_USER, DNAC_PASSWORD), verify=False)
+    login_url = "https://{0}:{1}/dna/system/api/v1/auth/token".format(controller_ip, port)
+    result = requests.post(url=login_url, auth=HTTPBasicAuth(username, password), verify=False)
     result.raise_for_status()
 
     token = result.json()["Token"]
     return (token)
 ##
 
-def create_url(path, controller_ip=DNAC):
+def create_url(path, controller_ip, port):
     """ Helper function to create a DNAC API endpoint URL
     """
-    return "https://%s:%s/dna/intent/api/v1/%s" % (controller_ip, DNAC_PORT, path)
+    return "https://%s:%s/dna/intent/api/v1/%s" % (controller_ip, port, path)
 ##
 
-def rest_get_url(url, token):
-    url = create_url(path=url)
+def rest_get_url(url, token, ip, port):
+    url = create_url(url, ip, port)
     headers = {'X-auth-token' : token}
     try:
         response = requests.get(url, headers=headers, verify=False)
@@ -85,16 +85,16 @@ def rest_get_url(url, token):
     return response.json()
 ##
 
-def dna_ip_to_id(ip, token):
-    return rest_get_url("network-device/ip-address/%s" % ip, token)
+def dna_ip_to_id(token, ip, port):
+    return rest_get_url("network-device/ip-address/%s" % ip,token,ip,port)
 ##
 
-def dna_get_modules(id, token):
-    return rest_get_url("network-device/module?deviceId=%s" % id, token)
+def dna_get_modules(id, token, port):
+    return rest_get_url("network-device/module?deviceId=%s" % id,token,ip,port)
 ##
 
-def dna_get_device_list(token):
-    return rest_get_url("network-device", token)
+def dna_get_device_list(token, ip, port):
+    return rest_get_url("network-device", token, ip , port)
 ##
 
 def print_info(modules):
@@ -147,18 +147,9 @@ def convert_path(path):
     return os.path.abspath(os.path.expanduser(path))
 ##
 
-
 def device_grouping(device_json):
     # input : device list (json)
     # grouping device
-            temp_01.append(item_1['id'])
-            temp_01.append(item_1['location'])
-            temp_01.append(item_1['family'])
-            temp_01.append(item_1['platformId'])
-            temp_01.append(item_1['role'])
-            temp_01.append(item_1['serialNumber'])
-            if (item_1['upTime']).find('day') < 0:
-                item_1['upTime'] = '0day,' + item_
     # output : 
     #   switch device (list)
     #   wireless device (list)
@@ -219,13 +210,13 @@ def device_grouping(device_json):
     return (switch_list, wireless_list)
 ##
 
-def getToken_control ():
+def cred_control ():
     """  
     1. Directory check
     2. read credencial file
     3. DNAC authen,
 
-    return token
+    return credencial
     """
     # check/create dir
 
@@ -240,9 +231,9 @@ def getToken_control ():
     # - Check token, timeout
     # -
 
-    # read credencial
+    # read credencialgetToken_control
     cred_list = csvFile_read(os.path.abspath("cred_list.csv"))
-    # turn hostname as getToken_control key of each credencial
+    # turn hostname as cred_control key of each credencial
     temp_cred = {}
     for idx_1, item_1 in enumerate (cred_list):
         temp_key = item_1['hostname']
@@ -285,7 +276,7 @@ def getToken_control ():
                 ## Token file Format list of [token,(token_value),(date-time)]175.176.222.199175.176.222.199
         temp_list.append('token')
         
-        token = (get_auth_token(cred_list['DNAC']['host'],cred_list['DNAC']['username'],cred_list['DNAC']['password']))
+        token = (get_auth_token(cred_list['DNAC']['host'],cred_list['DNAC']['username'],cred_list['DNAC']['password'],cred_list['DNAC']['https_port']))
         temp_list.append(token)
 
         temp_list.append((datetime.datetime.now()).strftime("%Y%m%d%H%M"))
@@ -293,32 +284,37 @@ def getToken_control ():
         token_cache_list.append(['name','value','date'])
         token_cache_list.append(temp_list)
         csvFile_write(token_cache_list, os.path.abspath(os.path.join("_codeData","_init_cache.txt")))
-    return (token)
+
+    cred_list['DNAC']['token'] = token
+    return (cred_list)
 ##
 
 if __name__ == "__main__":
     ## initial
     ##  - get token
-    token = getToken_control()
+    cred_list = cred_control()
+    token = cred_list['DNAC']['token']
+    dnac_ip = cred_list['DNAC']['host']
+    dnac_port = cred_list['DNAC']['https_port']
+
     print ("Main")
 
-
     ## Get device list
-    device_list =  dna_get_device_list(token)
-    switch_device_list, wireless_device_list = device_grouping(device_list)
+    device_list =  dna_get_device_list(token,dnac_ip,dnac_port)
+    device_switch_list, device_wireless_list = device_grouping(device_list)
 
-    
     ## compare Device
     ##  - existing file?
     ##      - yes > compare, write, noti ### new device, SN change (check model),
     ##      - no > write
-
+    
+    
 
     ## check uptime
     ##  - uptime == 0day, down** > noti
     
-    csvFile_write(switch_device_list, os.path.abspath(os.path.join("_codeData","deviceList","switch_device_list.csv")))
-    csvFile_write(wireless_device_list, os.path.abspath(os.path.join("_codeData","deviceList","wireless_device_list.csv")))
+    csvFile_write(device_switch_list, os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
+    csvFile_write(device_wireless_list, os.path.abspath(os.path.join("_codeData","deviceList","device_wireless_list.csv")))
 
     #pprint.pprint (cred_list) 
 
