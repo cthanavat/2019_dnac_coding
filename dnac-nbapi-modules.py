@@ -100,8 +100,20 @@ def dna_get_device_list(token, ip, port):
 # -------------------------------------------------------------------
 # General functions
 # -------------------------------------------------------------------
+def convert_list_to_dict(data_list):
+    Keys_of_Column = data_list[0]
+    del data_list[0]
+    for idx_1, item_1 in enumerate(data_list):
+        Temp_Json = '{'
+        for idx_2, item_2 in enumerate(item_1):
+            if idx_2 >= 1:
+                Temp_Json += ','
+            Temp_Json += '"' + Keys_of_Column[idx_2] + '":"' + item_2 + '"'
+        Temp_Json += '}'
+        data_list[idx_1] = json.loads(Temp_Json)
+    return (data_list)
 
-def csvFile_read(path):
+def csvFile_read(path, json_format = True,):
     """ Read csv file
     input: [Path <str>]
     return: [Lines <list>]
@@ -111,20 +123,13 @@ def csvFile_read(path):
     Keys_of_Column = []
     # Read  HostList as List
     with open(path, "r") as ins:
-        for idx_1, line in enumerate(ins):
-            if len(line) > 1:
-                Lines.append(line.rstrip('\n').split(','))
-    # cover list into of Dict (json form)
-    Keys_of_Column = Lines[0]
-    del Lines[0]
-    for idx_1, item_1 in enumerate(Lines):
-        Temp_Json = '{'
-        for idx_2, item_2 in enumerate(item_1):
-            if idx_2 >= 1:
-                Temp_Json += ','
-            Temp_Json += '"' + Keys_of_Column[idx_2] + '":"' + item_2 + '"'
-        Temp_Json += '}'
-        Lines[idx_1] = json.loads(Temp_Json)
+        for line in  csv.reader(ins, quotechar='"', delimiter=',',quoting=csv.QUOTE_ALL, skipinitialspace=True):
+            Lines.append(line)
+    
+    if json_format == True:
+        # cover list into of Dict (json form)
+        Lines = convert_list_to_dict(Lines)
+    #pprint.pprint (Lines)
     return (Lines)
 ##
 
@@ -288,6 +293,21 @@ def cred_control ():
     return (cred_list)
 ##
 
+def switch_compare(new_switch_list):
+    # read credencialgetToken_control  "_codeData","deviceList","device_switch_list.csv")
+    old_switch_list = csvFile_read(os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
+
+
+    pprint.pprint  (old_switch_list)
+    temp_list = {}
+    for idx_1, item_1 in enumerate (old_switch_list):
+        temp_key = item_1['hostname']
+        del item_1['hostname']
+        temp_list[temp_key] = item_1
+    old_switch_list = temp_list
+
+##
+
 if __name__ == "__main__":
     ## initial
     ##  - get token
@@ -306,13 +326,16 @@ if __name__ == "__main__":
     ##  - existing file?
     ##      - yes > compare, write, noti ### new device, SN change (check model),
     ##      - no > write
-    
-    
+    if os.path.exists(os.path.abspath(os.path.join('_codeData','deviceList','device_switch_list'))) == 0:
+        switch_compare(device_switch_list)
+        csvFile_write(device_switch_list, os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
+    else:
+        csvFile_write(device_switch_list, os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
 
     ## check uptime
     ##  - uptime == 0day, down** > noti
     
-    csvFile_write(device_switch_list, os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
+    #(device_switch_list, os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
     csvFile_write(device_wireless_list, os.path.abspath(os.path.join("_codeData","deviceList","device_wireless_list.csv")))
 
     #pprint.pprint (cred_list) 
