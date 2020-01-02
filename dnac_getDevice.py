@@ -30,10 +30,13 @@ import csv
 import datetime
 import json
 import os
+import platform
 import pprint
 import requests
 import sys
+import subprocess
 from requests.auth import HTTPBasicAuth
+from pythonping import ping
 
 requests.packages.urllib3.disable_warnings()
 
@@ -148,6 +151,51 @@ def convert_path(path):
 ##
 
 
+def ping(ip_address, os_name):
+    """
+    input: [ip_address]
+    return: [0] (failed), [1] (success)
+    """
+
+    # For each IP address in the subnet,
+    # run the ping command with subprocess.popen interface
+
+    # Use Windows OS ping
+    if os_name == 'Windows':
+        # Configure subprocess to hide the console window
+        info = subprocess.STARTUPINFO()
+        info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        info.wShowWindow = subprocess.SW_HIDE
+
+        output = subprocess.Popen(['ping', '-n', '1', ip_address], stdout=subprocess.PIPE, startupinfo=info).communicate()[0]
+        # Classify output
+        if "Destination host unreachable" in output.decode('utf-8'):
+            return (0)
+        elif "Request timed out" in output.decode('utf-8'):
+            return (0)
+        elif "TTL=" in output.decode('utf-8'):
+            return (1)
+        else:
+            return (0)
+
+    if os_name == 'Linux':
+        # Configure subprocess to hide the console Linux
+
+        output = subprocess.Popen(["/bin/ping", "-c1", "-w 5", ip_address], stdout=subprocess.PIPE).stdout.read()
+        # Classify output
+        if "Destination host unreachable" in output.decode('utf-8'):
+            return (0)
+        elif "Request timed out" in output.decode('utf-8'):
+            return (0)
+        elif "expired in transit" in output.decode('utf-8'):
+            return (0)
+        elif "ttl=" in output.decode('utf-8'):
+            return (1)
+        else:
+            return (0)
+##
+
+
 # -------------------------------------------------------------------
 # Program functions
 # -------------------------------------------------------------------
@@ -237,67 +285,73 @@ def cred_control ():
     # -
 
     # read credencialgetToken_control
-    cred_list = csvFile_read(os.path.abspath("cred_list.csv"))
-    # turn hostname as cred_control key of each credencial
-    temp_cred = {}
-    for idx_1, item_1 in enumerate (cred_list):
-        temp_key = item_1['hostname']
-        del item_1['hostname']
-        temp_cred[temp_key] = item_1
-    cred_list = temp_cred
-
-    token_check = 0
-    token = ""
-    token_cache_list = []
-    temp_list = []
-
-    if not os.path.exists(os.path.abspath(os.path.join("_codeData","_init_cache.txt"))):
-        token_check = 1
+    if not os.path.exists(os.path.abspath(os.path.join("cred_list.csv"))):
+        return  ("Not found credencial file")
     else:
-        # Read file
-        init_cache = csvFile_read(os.path.abspath(os.path.join("_codeData","_init_cache.txt")))
+        cred_list = csvFile_read(os.path.abspath("cred_list.csv"))
+        # turn hostname as cred_control key of each credencial
+        temp_cred = {}
+        for idx_1, item_1 in enumerate (cred_list):
+            temp_key = item_1['hostname']
+            del item_1['hostname']
+            temp_cred[temp_key] = item_1
+        cred_list = temp_cred
 
-        # 
-        temp_init_cache = {}
-        for idx_1, item_1 in enumerate (init_cache):
-            temp_key = item_1['name']
-            del item_1['name']
-            temp_init_cache[temp_key] = item_1
-        init_cache = temp_init_cache
-        
-        # Check Token timeout,
-        time_now = (datetime.datetime.now()).strftime("%Y%m%d%H%M")
-        time_token =  init_cache['token']['date']
-        #pprint.pprint(time_token)
-        if int(time_now) > (int(time_token)+30):
-            print ('Timeout auth')
+        token_check = 0
+        token = ""
+        token_cache_list = []
+        temp_list = []
+
+        if not os.path.exists(os.path.abspath(os.path.join("_codeData","_init_cache.txt"))):
             token_check = 1
         else:
-            print ('Old auth')
-            token = init_cache['token']['value']
-    
-    if token_check == 1:
-        print ("New auth")
-                ## Token file Format list of [token,(token_value),(date-time)]175.176.222.199175.176.222.199
-        temp_list.append('token')
+            # Read file
+            init_cache = csvFile_read(os.path.abspath(os.path.join("_codeData","_init_cache.txt")))
+
+            # 
+            temp_init_cache = {}
+            for idx_1, item_1 in enumerate (init_cache):
+                temp_key = item_1['name']
+                del item_1['name']
+                temp_init_cache[temp_key] = item_1
+            init_cache = temp_init_cache
+            
+            # Check Token timeout,
+            time_now = (datetime.datetime.now()).strftime("%Y%m%d%H%M")
+            time_token =  init_cache['token']['date']
+            #pprint.pprint(time_token)
+            if int(time_now) > (int(time_token)+30):
+                print ('Timeout auth')
+                token_check = 1
+            else:
+                print ('Old auth')
+                token = init_cache['token']['value']
         
-        token = (get_auth_token(cred_list['DNAC']['host'],cred_list['DNAC']['username'],cred_list['DNAC']['password'],cred_list['DNAC']['https_port']))
-        temp_list.append(token)
+        if token_check == 1:
+            if (ping (cred_list['DNAC']['host'], platform.system())) == 1:
+                print ("New auth")
+                
+                ## Token file Format list of [token,(token_value),(date-time)]175.176.222.199175.176.222.199
+                temp_list.append('token')
+                
+                token = (get_auth_token(cred_list['DNAC']['host'],cred_list['DNAC']['username'],cred_list['DNAC']['password'],cred_list['DNAC']['https_port']))
+                temp_list.append(token)
 
-        temp_list.append((datetime.datetime.now()).strftime("%Y%m%d%H%M"))
+                temp_list.append((datetime.datetime.now()).strftime("%Y%m%d%H%M"))
 
-        token_cache_list.append(['name','value','date'])
-        token_cache_list.append(temp_list)
-        csvFile_write(token_cache_list, os.path.abspath(os.path.join("_codeData","_init_cache.txt")))
+                token_cache_list.append(['name','value','date'])
+                token_cache_list.append(temp_list)
+                csvFile_write(token_cache_list, os.path.abspath(os.path.join("_codeData","_init_cache.txt")))
 
-    cred_list['DNAC']['token'] = token
-    return (cred_list)
+                cred_list['DNAC']['token'] = token
+                return (cred_list)
+            else:
+                return ("Can not conncet to DNAC")
 ##
 
 def switch_compare(new_switch_list):
     # read credencialgetToken_control  "_codeData","deviceList","device_switch_list.csv")
     old_switch_list = csvFile_read(os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")), False)
-
 
     #pprint.pprint  (old_switch_list)
     compare_switch_old = []
@@ -309,49 +363,59 @@ def switch_compare(new_switch_list):
     for idx_1, item_1 in enumerate (new_switch_list):
         compare_switch_new.append(item_1[0])
     
-    if len(compare_switch_new) > len(compare_switch_old):
-        print (set(compare_switch_new) - set(compare_switch_old))
-    
-    
-    
+    # compare, 
+    if len(set(compare_switch_new) - set(compare_switch_old)) > 0:
+        print ("..New device")
+        new_switch = list(set(compare_switch_new) - set(compare_switch_old))
+    if len(set(compare_switch_old) - set(compare_switch_new)) > 0:
+        print ("..Lost")
+        lost_switch = list(set(compare_switch_old) - set(compare_switch_new))
+        pprint.pprint (lost_switch)
+    if len(set(compare_switch_new) - set(compare_switch_old)) == 0 & len(compare_switch_new) == len(compare_switch_old):
+        print ("..Equal")
+        
     #pprint.pprint (compare_switch_new)
-    
 ##
 
 if __name__ == "__main__":
     ## initial
     ##  - get token
-    cred_list = cred_control()
-    token = cred_list['DNAC']['token']
-    dnac_ip = cred_list['DNAC']['host']
-    dnac_port = cred_list['DNAC']['https_port']
-
-    print ("Main")
-
-    ## Get device list
-    device_list =  dna_get_device_list(token,dnac_ip,dnac_port)
-    device_switch_list, device_wireless_list = device_grouping(device_list)
-
-    ## compare Device
-    ##  - existing file?
-    ##      - yes > compare, write, noti ### new device, SN change (check model),
-    ##      - no > write
-    if os.path.exists(os.path.abspath(os.path.join('_codeData','deviceList','device_switch_list'))) == 0:
-        switch_compare(device_switch_list)
-        #csvFile_write(device_switch_list, os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
-    else:
-        csvFile_write(device_switch_list, os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
-
-    ## check uptime
-    ##  - uptime == 0day, down** > noti
+    ##  - Check connection
     
-    #(device_switch_list, os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
-    csvFile_write(device_wireless_list, os.path.abspath(os.path.join("_codeData","deviceList","device_wireless_list.csv")))
+    cred_list = cred_control()
 
-    #pprint.pprint (cred_list) 
+    if type(cred_list) != str:
+        ## Get device list
+        token = cred_list['DNAC']['token']
+        dnac_ip = cred_list['DNAC']['host']
+        dnac_port = cred_list['DNAC']['https_port']
 
-    #device_detail = dna_ip_to_id("10.10.20.81", token)
-    #pprint.pprint  (device_detail)
-    #modules = dna_get_modules(device_detail['response']['id'], token)
-    #print_info(modules)
-    #
+        device_list =  dna_get_device_list(token,dnac_ip,dnac_port)
+        device_switch_list, device_wireless_list = device_grouping(device_list)
+
+        ## compare Device
+        ##  - existing file?
+        ##      - yes > compare, write, noti ### new device, SN change (check model),
+        ##      - no > write
+        if os.path.exists(os.path.abspath(os.path.join('_codeData','deviceList','device_switch_list'))) == 0:
+            switch_compare(device_switch_list)
+            #csvFile_write(device_switch_list, os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
+        else:
+            csvFile_write(device_switch_list, os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
+
+        ## check uptime
+        ##  - uptime == 0day, down** > noti
+        #(device_switch_list, os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
+        csvFile_write(device_wireless_list, os.path.abspath(os.path.join("_codeData","deviceList","device_wireless_list.csv")))
+
+        #pprint.pprint (cred_list) 
+        #device_detail = dna_ip_to_id("10.10.20.81", token)
+        #pprint.pprint  (device_detail)
+        #modules = dna_get_modules(device_detail['response']['id'], token)
+        #print_info(modules)
+        #
+
+    else:
+        ## Print error
+        print (cred_list)
+        
