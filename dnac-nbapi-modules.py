@@ -112,8 +112,9 @@ def convert_list_to_dict(data_list):
         Temp_Json += '}'
         data_list[idx_1] = json.loads(Temp_Json)
     return (data_list)
+##
 
-def csvFile_read(path, json_format = True,):
+def csvFile_read(path, json_format = True):
     """ Read csv file
     input: [Path <str>]
     return: [Lines <list>]
@@ -295,17 +296,26 @@ def cred_control ():
 
 def switch_compare(new_switch_list):
     # read credencialgetToken_control  "_codeData","deviceList","device_switch_list.csv")
-    old_switch_list = csvFile_read(os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
+    old_switch_list = csvFile_read(os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")), False)
 
 
-    pprint.pprint  (old_switch_list)
-    temp_list = {}
+    #pprint.pprint  (old_switch_list)
+    compare_switch_old = []
     for idx_1, item_1 in enumerate (old_switch_list):
-        temp_key = item_1['hostname']
-        del item_1['hostname']
-        temp_list[temp_key] = item_1
-    old_switch_list = temp_list
+        compare_switch_old.append(item_1[0])
 
+    #pprint.pprint (new_switch_list)
+    compare_switch_new = []
+    for idx_1, item_1 in enumerate (new_switch_list):
+        compare_switch_new.append(item_1[0])
+    
+    if len(compare_switch_new) > len(compare_switch_old):
+        print (set(compare_switch_new) - set(compare_switch_old))
+    
+    
+    
+    #pprint.pprint (compare_switch_new)
+    
 ##
 
 if __name__ == "__main__":
@@ -328,7 +338,7 @@ if __name__ == "__main__":
     ##      - no > write
     if os.path.exists(os.path.abspath(os.path.join('_codeData','deviceList','device_switch_list'))) == 0:
         switch_compare(device_switch_list)
-        csvFile_write(device_switch_list, os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
+        #csvFile_write(device_switch_list, os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
     else:
         csvFile_write(device_switch_list, os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
 
