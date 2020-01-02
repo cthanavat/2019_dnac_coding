@@ -36,7 +36,6 @@ import requests
 import sys
 import subprocess
 from requests.auth import HTTPBasicAuth
-from pythonping import ping
 
 requests.packages.urllib3.disable_warnings()
 
@@ -326,6 +325,8 @@ def cred_control ():
             else:
                 print ('Old auth')
                 token = init_cache['token']['value']
+                cred_list['DNAC']['token'] = token
+                return (cred_list)
         
         if token_check == 1:
             if (ping (cred_list['DNAC']['host'], platform.system())) == 1:
