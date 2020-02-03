@@ -179,6 +179,9 @@ def ping(ip_address, os_name):
 
     if os_name == 'Linux':
         # Configure subprocess to hide the console Linux
+        info = subprocess.STARTUPINFO()
+        info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        info.wShowWindow = subprocess.SW_HIDE
 
         output = subprocess.Popen(["/bin/ping", "-c1", "-w 5", ip_address], stdout=subprocess.PIPE).stdout.read()
         # Classify output
