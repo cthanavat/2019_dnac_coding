@@ -37,7 +37,7 @@ def callback():
 def handle_message(event):
     # input from LINE msg
     text = event.message.text
-
+    #waht the fuck
     if os.name == 'Windows':
         # Configure subprocess to hide the console window
         info = subprocess.STARTUPINFO()
