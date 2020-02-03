@@ -1,5 +1,5 @@
 import subprocess
-
+import os
 from flask import Flask, request, abort
 
 from linebot import (
@@ -38,10 +38,11 @@ def handle_message(event):
     # input from LINE msg
     text = event.message.text
 
-    # THANA custormize
-    info = subprocess.STARTUPINFO()
-    info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    info.wShowWindow = subprocess.SW_HIDE
+    if os.name == 'Windows':
+        # Configure subprocess to hide the console window
+        info = subprocess.STARTUPINFO()
+        info.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        info.wShowWindow = subprocess.SW_HIDE
 
     output = subprocess.run(['python','dnac_phrase_control.py', text],  capture_output=True, text=True, shell=True).stdout
     print (output)
