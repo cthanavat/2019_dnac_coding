@@ -87,16 +87,16 @@ def rest_get_url(url, token, ip, port):
     return response.json()
 ##
 
-def dna_ip_to_id(token, ip, port):
-    return rest_get_url("network-device/ip-address/%s" % ip,token,ip,port)
+def dna_ip_to_id(dnac_info,ip):
+    return rest_get_url("network-device/ip-address/%s" % ip,dnac_info['token'], dnac_info['host'] , dnac_info['https_port'])
 ##
 
-def dna_get_modules(id, token, port):
-    return rest_get_url("network-device/module?deviceId=%s" % id,token,ip,port)
+def dna_get_modules(dnac_info,id) :
+    return rest_get_url("network-device/module?deviceId=%s" % id,dnac_info['token'], dnac_info['host'] , dnac_info['https_port'])
 ##
 
-def dna_get_device_list(token, ip, port):
-    return rest_get_url("network-device", token, ip , port)
+def dna_get_device_list(dnac_info):
+    return rest_get_url("network-device", dnac_info['token'], dnac_info['host'] , dnac_info['https_port'])
 ##
 
 # -------------------------------------------------------------------
@@ -205,9 +205,8 @@ def device_grouping(device_json):
     # output : 
     #   switch device (list)
     #   wireless device (list)
-    switch_list = []
-    wireless_list = []
-    for idx_1, item_1 in enumerate (device_list['response']):
+    return_list = []
+    for idx_1, item_1 in enumerate (device_json['response']):
         temp_01 = []
         # add table header
         if idx_1 == 0:
@@ -220,46 +219,23 @@ def device_grouping(device_json):
             temp_01.append('serialNumber')
             temp_01.append('upTime')
             temp_01.append('errorCode')
-            switch_list.append(temp_01)
-            wireless_list.append(temp_01)
+            return_list.append(temp_01)
             temp_01 = []
         
         # filter Switch device and add to list
-        if item_1['family'] == "Switches and Hubs":
-            temp_01.append(item_1['hostname'])
-            temp_01.append(item_1['id'])
-            temp_01.append(item_1['location'])
-            temp_01.append(item_1['family'])
-            temp_01.append(item_1['platformId'])
-            temp_01.append(item_1['role'])
-            temp_01.append(item_1['serialNumber'])
-            if (item_1['upTime']).find('day') < 0:
-                item_1['upTime'] = '0day,' + item_1['upTime']
-            temp_01.append(item_1['upTime'])
-            temp_01.append(item_1['errorCode'])
-            switch_list.append(temp_01)
-            
-        # wireless device and add to list
-        elif item_1['family'] == "Unified AP":
-            temp_01.append(item_1['hostname'])
-            temp_01.append(item_1['id'])
-            temp_01.append(item_1['location'])
-            temp_01.append(item_1['family'])
-            temp_01.append(item_1['platformId'])
-            temp_01.append(item_1['role'])
-            temp_01.append(item_1['serialNumber'])
-            if (item_1['upTime']).find('day') < 0:
-                item_1['upTime'] = '0day,' + item_1['upTime']
-            elif (item_1['upTime']).find('day ') > 0:
-                item_1['upTime'] = (item_1['upTime']).replace('day'," day,")
-            elif (item_1['upTime']).find('days ') > 0:
-                item_1['upTime'] = (item_1['upTime']).replace('days'," days,")
-            temp_01.append(item_1['upTime'])
-            temp_01.append(item_1['errorCode'])
-            wireless_list.append(temp_01)
-    print ("Network device : ", len(switch_list))
-    print ("wireless device: ", len(wireless_list))
-    return (switch_list, wireless_list)
+        temp_01.append(item_1['hostname'])
+        temp_01.append(item_1['id'])
+        temp_01.append(item_1['location'])
+        temp_01.append(item_1['family'])
+        temp_01.append(item_1['platformId'])
+        temp_01.append(item_1['role'])
+        temp_01.append(item_1['serialNumber'])
+        if (item_1['upTime']).find('day') < 0:
+            item_1['upTime'] = '0day,' + item_1['upTime']
+        temp_01.append(item_1['upTime'])
+        temp_01.append(item_1['errorCode'])
+        return_list.append(temp_01)
+    return (return_list )
 ##
 
 def cred_control ():
@@ -320,17 +296,17 @@ def cred_control ():
             time_token =  init_cache['token']['date']
             #pprint.pprint(time_token)
             if int(time_now) > (int(time_token)+30):
-                print ('Timeout auth')
+                #print ('Timeout auth')
                 token_check = 1
             else:
-                print ('Old auth')
+                #print ('Old auth')
                 token = init_cache['token']['value']
                 cred_list['DNAC']['token'] = token
                 return (cred_list)
         
         if token_check == 1:
             if (ping (cred_list['DNAC']['host'], platform.system())) == 1:
-                print ("New auth")
+                #print ("New auth")
                 
                 ## Token file Format list of [token,(token_value),(date-time)]175.176.222.199175.176.222.199
                 temp_list.append('token')
@@ -355,6 +331,8 @@ def switch_compare(new_switch_list):
     old_switch_list = csvFile_read(os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")), False)
 
     #pprint.pprint  (old_switch_list)
+    new_switch = []
+    notFound_switch =[]
     compare_switch_old = []
     for idx_1, item_1 in enumerate (old_switch_list):
         compare_switch_old.append(item_1[0])
@@ -366,55 +344,68 @@ def switch_compare(new_switch_list):
     
     # compare, 
     if len(set(compare_switch_new) - set(compare_switch_old)) > 0:
-        print ("..New device")
         new_switch = list(set(compare_switch_new) - set(compare_switch_old))
+        print ("\nSwitch NEW "+"("+ str(len(new_switch))+")")
+        for idx_1, item_1 in enumerate (new_switch):
+            text = item_1.replace('.pttgrp.corp', '')
+            print (" ", str(idx_1+1)+")", text)
     if len(set(compare_switch_old) - set(compare_switch_new)) > 0:
-        print ("..Lost")
-        lost_switch = list(set(compare_switch_old) - set(compare_switch_new))
-        pprint.pprint (lost_switch)
+        notFound_switch = list(set(compare_switch_old) - set(compare_switch_new))
+        print ("\nSwitch NOT FOUND "+"("+ str(len(notFound_switch))+")")
+        for idx_1, item_1 in enumerate (notFound_switch):
+            text = item_1.replace('.pttgrp.corp', '')
+            print (" ", str(idx_1+1)+")", text)
     if len(set(compare_switch_new) - set(compare_switch_old)) == 0 & len(compare_switch_new) == len(compare_switch_old):
-        print ("..Equal")
+        print ("\nSwitc Good")
         
-    #pprint.pprint (compare_switch_new)
+
+##
+
+
+def dna_get_switchDeviceList(dnac_info):
+    return rest_get_url("network-device?family=Switches and Hubs", dnac_info['token'], dnac_info['host'] , dnac_info['https_port'])
+##
+def dna_get_wirelessDeviceList(dnac_info):
+    return rest_get_url("network-device?family=Unified AP", dnac_info['token'], dnac_info['host'] , dnac_info['https_port'])
 ##
 
 if __name__ == "__main__":
     ## initial
     ##  - get token
     ##  - Check connection
-    
+    line_msg = ""
     cred_list = cred_control()
+
 
     if type(cred_list) != str:
         ## Get device list
-        token = cred_list['DNAC']['token']
-        dnac_ip = cred_list['DNAC']['host']
-        dnac_port = cred_list['DNAC']['https_port']
+        dnac_info = cred_list['DNAC']
 
-        device_list =  dna_get_device_list(token,dnac_ip,dnac_port)
-        device_switch_list, device_wireless_list = device_grouping(device_list)
+        #Get device and remove unused data
+        device_switch_list      = device_grouping(dna_get_switchDeviceList(dnac_info))
+        device_wireless_list    = device_grouping(dna_get_wirelessDeviceList(dnac_info))
+
+        print ("Switch Device :", len(device_switch_list)-1)
+        print ("Wireless Device :", len(device_wireless_list)-1)
+
+        line_msg += "Switch Device :" + str(len(device_switch_list)-1) + "\n"
+        line_msg += "Wireless Device :" + str(len(device_wireless_list)-1) + "\n"
 
         ## compare Device
         ##  - existing file?
         ##      - yes > compare, write, noti ### new device, SN change (check model),
         ##      - no > write
         if os.path.exists(os.path.abspath(os.path.join('_codeData','deviceList','device_switch_list'))) == 0:
-            switch_compare(device_switch_list)
+            switch_compare(device_switch_list)  
             #csvFile_write(device_switch_list, os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
         else:
+            # sholde print something to report
             csvFile_write(device_switch_list, os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
 
         ## check uptime
         ##  - uptime == 0day, down** > noti
         #(device_switch_list, os.path.abspath(os.path.join("_codeData","deviceList","device_switch_list.csv")))
         csvFile_write(device_wireless_list, os.path.abspath(os.path.join("_codeData","deviceList","device_wireless_list.csv")))
-
-        #pprint.pprint (cred_list) 
-        #device_detail = dna_ip_to_id("10.10.20.81", token)
-        #pprint.pprint  (device_detail)
-        #modules = dna_get_modules(device_detail['response']['id'], token)
-        #print_info(modules)
-        #
 
     else:
         ## Print error
