@@ -1,5 +1,5 @@
-list_01 = [1,1,1,1]
+def hell():
+    print ("inside")
 
-print (type(list_01))
-if (type(list_01) == list):
-    print ('yeh')
+text = hell()
+print (text
